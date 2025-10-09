@@ -54,7 +54,9 @@ checked_diseases = set()
 
 try:
     for result in prolog.query(f"diagnose({patient}, Disease)"):
-        exact_matches.append(str(result["Disease"]))
+        disease_str = str(result["Disease"])
+        if not disease_str.startswith('_'):
+            exact_matches.append(disease_str)
 except Exception:
     pass
 
