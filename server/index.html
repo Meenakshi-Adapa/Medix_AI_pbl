@@ -114,6 +114,22 @@
         <p>Enter symptoms separated by a comma and press Enter or click the button.</p>
 
         <input type="text" id="symptomsInput" placeholder="e.g., fever, cough, headache">
+        <br><small>Enter symptoms separated by commas.</small>
+        <br><br>
+        <label for="severitySelect">Symptom Severity:</label>
+        <select id="severitySelect">
+            <option value="mild">Mild</option>
+            <option value="moderate" selected>Moderate</option>
+            <option value="high">High</option>
+        </select>
+        <br><br>
+        <label for="durationSelect">Symptom Duration:</label>
+        <select id="durationSelect">
+            <option value="short">Short</option>
+            <option value="medium" selected>Medium</option>
+            <option value="long">Long</option>
+        </select>
+        <br><br>
         <button onclick="getDiagnosis()">Get Diagnosis</button>
 
         <div id="results">
@@ -146,35 +162,47 @@
             }
 
             try {
-                const response = await fetch('http://localhost:3000/diagnose', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symptoms: symptoms }),
+            const response = await fetch('http://localhost:3000/diagnose', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    symptoms: symptoms,
+                    severity: document.getElementById('severitySelect').value,
+                    duration: document.getElementById('durationSelect').value
+                }),
+            });
+
+            const data = await response.json();
+            
+            let html = '<h2>Results</h2>';
+            let resultsFound = false;
+
+            if (data.exact && data.exact.length > 0) {
+                resultsFound = true;
+                html += `<p><b>Exact Diagnosis:</b> ${data.exact.join(', ')}</p>`;
+            }
+            
+            if (data.partial && data.partial.length > 0) {
+                resultsFound = true;
+                html += `<p><b>Possible Diagnoses (Partial Match):</b></p><ul>`;
+                data.partial.forEach(match => {
+                    html += `<li>${match.disease} (${match.match_count} matching symptoms)</li>`;
                 });
+                html += '</ul>';
+            }
 
-                const data = await response.json();
-                
-                let html = '<h2>Results</h2>';
-                let resultsFound = false;
+            if (data.explanations && Object.keys(data.explanations).length > 0) {
+                html += '<p><b>Explanations:</b></p><ul>';
+                for (const [disease, explanation] of Object.entries(data.explanations)) {
+                    html += `<li><b>${disease}:</b> ${explanation}</li>`;
+                }
+                html += '</ul>';
+            }
 
-                if (data.exact && data.exact.length > 0) {
-                    resultsFound = true;
-                    html += `<p><b>Exact Diagnosis:</b> ${data.exact.join(', ')}</p>`;
-                }
-                
-                if (data.partial && data.partial.length > 0) {
-                    resultsFound = true;
-                    html += `<p><b>Possible Diagnoses (Partial Match):</b></p><ul>`;
-                    data.partial.forEach(match => {
-                        html += `<li>${match.disease} (${match.match_count} matching symptoms)</li>`;
-                    });
-                    html += '</ul>';
-                }
-
-                if (!resultsFound) {
-                    html += '<p>No diagnosis could be determined from the symptoms provided.</p>';
-                }
-                resultsElement.innerHTML = html;
+            if (!resultsFound) {
+                html += '<p>No diagnosis could be determined from the symptoms provided.</p>';
+            }
+            resultsElement.innerHTML = html;
 
             } catch (error) {
                 resultsElement.innerHTML = '<p style="color: red;">Error: Could not connect to the diagnosis server.</p>';

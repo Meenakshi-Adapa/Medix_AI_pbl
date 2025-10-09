@@ -47,13 +47,21 @@ for symptom in symptoms:
     except Exception:
         pass
 
+# For demonstration, assume severity and duration are moderate and medium for all symptoms
+for symptom in symptoms:
+    try:
+        prolog.assertz(f"has_symptom_severity({patient}, {symptom}, moderate)")
+        prolog.assertz(f"has_symptom_duration({patient}, {symptom}, medium)")
+    except Exception:
+        pass
+
 # --- Diagnose diseases ---
 exact_matches = []
 partial_matches = []
 checked_diseases = set()
 
 try:
-    for result in prolog.query(f"diagnose({patient}, Disease)"):
+    for result in prolog.query(f"diagnose_extended({patient}, Disease)"):
         disease_str = str(result["Disease"])
         if not disease_str.startswith('_'):
             exact_matches.append(disease_str)
@@ -76,6 +84,8 @@ for fact in facts:
 # --- Cleanup patient facts ---
 try:
     prolog.retractall(f"has_symptom({patient}, _)")
+    prolog.retractall(f"has_symptom_severity({patient}, _, _)")
+    prolog.retractall(f"has_symptom_duration({patient}, _, _)")
 except Exception:
     pass
 
@@ -85,11 +95,22 @@ if not final_diagnosis:
     partial_matches.sort(key=lambda x: x["match_count"], reverse=True)
     final_diagnosis = [p["disease"] for p in partial_matches]
 
+# --- Get explanations ---
+explanations = {}
+for disease in final_diagnosis:
+    try:
+        explanation_result = list(prolog.query(f"explanation({disease}, Explanation)"))
+        if explanation_result:
+            explanations[disease] = explanation_result[0]["Explanation"]
+    except Exception:
+        explanations[disease] = "No explanation available."
+
 # --- Output clean JSON ---
 result = {
     "exact": list(set(exact_matches)),
     "partial": partial_matches,
     "diagnose": final_diagnosis,
+    "explanations": explanations
 }
 
 print(json.dumps(result))
